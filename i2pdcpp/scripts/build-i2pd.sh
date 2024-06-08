@@ -71,7 +71,6 @@ applyPatch()
 patchI2p()
 {
     applyPatch patches/0.daemon_lib.patch
-    applyPatch patches/1.2.50.0.2-sim.patch
 }
 
 buildNative()
