@@ -38,7 +38,7 @@ bool DaemonApple::init(int argc, char* argv[])
 }
 
 void DaemonApple::start()
-{
+    {
 	Daemon.start();
 }
 

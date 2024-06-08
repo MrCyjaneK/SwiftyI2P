@@ -1,23 +1,18 @@
 import Foundation
 import i2pbridge
-import os
 import Network
+import os
 
 public final class Daemon {
+    public let version = "2.5.2"
+
     private let isStarted = OSAllocatedUnfairLock(initialState: false)
 
     /// A path to i2pd data
     public let dataDir: URL
 
     /// An i2p configuration. Throws an error is daemon is not started.
-    public var configuration: Configuration {
-        get throws {
-            guard isStarted.withLock({ $0 }) else {
-                throw Failure.notStarted
-            }
-            return Configuration()
-        }
-    }
+    let configuration: Configuration
 
     public enum Failure: Error {
         case unknown(String)
@@ -26,25 +21,31 @@ public final class Daemon {
 
     /// Constructs `Daemon` instance
     /// - Parameter dataDir: An existing path to i2pd data
-    public init(dataDir: URL) {
+    public init(dataDir: URL, configuration: Configuration) {
         self.dataDir = dataDir
+        self.configuration = configuration
     }
 
     /// Start i2p.
     public func start() async throws {
-        return try await withCheckedThrowingContinuation { [dataDir, isStarted] continuation in
-            DispatchQueue.global().async {
-                i2pd_set_data_dir(dataDir.path)
+        try await withCheckedThrowingContinuation { [dataDir, isStarted] continuation in
+            DispatchQueue.global().async { [weak self] in
+                guard let self else { return }
+                do {
+                    try checkAssets()
+                    i2pd_set_data_dir(dataDir.path)
 
-                let error = String(cString: i2pd_start())
-                guard error == "ok" else {
-                    continuation.resume(throwing: Failure.unknown(error))
-                    return
+                    let error = String(cString: i2pd_start())
+                    guard error == "ok" else {
+                        throw Failure.unknown(error)
+                    }
+                    isStarted.withLock {
+                        $0 = true
+                    }
+                    continuation.resume()
+                } catch {
+                    continuation.resume(throwing: error)
                 }
-                isStarted.withLock {
-                    $0 = true
-                }
-                continuation.resume()
             }
         }
     }
@@ -59,41 +60,17 @@ public final class Daemon {
             }
         }
     }
-}
 
-public final class Configuration {
-    /// An URL to i2p console
-    public var consoleURL: URL? {
-        let address = String(cString: i2pd_get_string_option("http.address"))
-        let port = i2pd_get_int_option("http.port")
-        return URL(string: "http://\(address):\(port)")
-    }
-
-    /// HTTP proxy
-    public var httpProxy: NWEndpoint? {
-        let host = String(cString: i2pd_get_string_option("httpproxy.address"))
-        let port = i2pd_get_int_option("httpproxy.port")
-        guard let port = NWEndpoint.Port(rawValue: UInt16(port)) else {
-            return nil
+    func checkAssets() throws {
+        let fm = FileManager.default
+        let versionFile = dataDir.appending(path: "assets.ready")
+        let confFile = dataDir.appending(path: "i2pd.conf")
+        let certificatesDir = dataDir.appending(path: "certificates")
+        try? fm.createDirectory(at: dataDir, withIntermediateDirectories: false)
+        if let versionData = try? Data(contentsOf: versionFile), String(data: versionData, encoding: .utf8) != version {
+            try? fm.removeItem(at: certificatesDir)
+            try version.write(to: versionFile, atomically: true, encoding: .utf8)
         }
-
-        return NWEndpoint.hostPort(
-            host: .init(host), 
-            port: port
-        )
-    }
-
-    /// Socks5 proxy
-    public var socksProxy: NWEndpoint? {
-        let host = String(cString: i2pd_get_string_option("socksproxy.address"))
-        let port = i2pd_get_int_option("socksproxy.port")
-        guard let port = NWEndpoint.Port(rawValue: UInt16(port)) else {
-            return nil
-        }
-
-        return NWEndpoint.hostPort(
-            host: .init(host),
-            port: port
-        )
+        try configuration.asString.write(to: confFile, atomically: true, encoding: .utf8)
     }
 }

@@ -42,7 +42,16 @@ char * i2pd_get_string_option(const char * option) {
 	return char_ptr(res.c_str());
 }
 
-int i2pd_get_int_option(const char * option) {
+void i2pd_set_string_option(const char * option, const char * value) {
+    std::string val = value;
+    i2p::config::SetOption(option, val);
+}
+
+uint16_t i2pd_get_uint16_option(const char * option) {
 	uint16_t res; i2p::config::GetOption(option, res);
 	return res;
+}
+
+void i2pd_set_uint16_option(const char * option, int value) {
+    i2p::config::SetOption(option, (uint16_t)value);
 }

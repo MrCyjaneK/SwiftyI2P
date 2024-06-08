@@ -1,0 +1,105 @@
+//
+//  Configuration.swift
+//
+//
+//  Created by Vladimir Solomenchuk on 6/7/24.
+//
+
+import Foundation
+import i2pbridge
+import Network
+
+public struct Configuration {
+    enum Failure: Error {
+        case unsupported(String)
+    }
+
+    private var content = [String: Any]()
+
+    public init() {}
+
+    public mutating func set(key: String, value: Any) {
+        content[key] = value
+    }
+
+    public func get<T>(key: String) throws -> T {
+        switch T.self {
+        case is UInt16.Type:
+            if let res = i2pd_get_uint16_option(key) as? T {
+                return res
+            }
+        case is String.Type:
+            if let res = String(cString: i2pd_get_string_option(key)) as? T {
+                return res
+            }
+        default:
+            break
+        }
+        throw Failure.unsupported(String(describing: T.self))
+    }
+
+    var asString: String {
+        var currentSection = ""
+        var lines = [String]()
+        let sortedKeys = content.keys.sorted { a, b in
+            if a.firstIndex(of: ".") != nil {
+                return false
+            }
+            if b.firstIndex(of: ".") != nil {
+                return true
+            }
+            return a < b
+        }
+        for compoundKey in sortedKeys {
+            let keySection = compoundKey.components(separatedBy: ".")
+            let key: String
+            let section: String
+            if keySection.count == 1 {
+                section = ""
+                key = keySection[0]
+            } else {
+                section = keySection[0]
+                key = keySection[1]
+            }
+            if section != currentSection {
+                lines.append("[\(section)]")
+                currentSection = section
+            }
+
+            lines.append("\(key) = \(content[compoundKey]!)")
+        }
+
+        return lines.joined(separator: "\n")
+    }
+}
+
+public extension Configuration {
+    var socksProxy: NWEndpoint? {
+        get {
+            do {
+                let host: String = try get(key: "socksproxy.address")
+                let port: UInt16 = try get(key: "socksproxy.port")
+
+                guard let port = NWEndpoint.Port(rawValue: port) else {
+                    return nil
+                }
+
+                return NWEndpoint.hostPort(
+                    host: .init(host),
+                    port: port
+                )
+            } catch {
+                return nil
+            }
+        }
+        set {
+            switch newValue {
+            case let .hostPort(host: host, port: port):
+                set(key: "socksproxy.address", value: host.debugDescription)
+                set(key: "socksproxy.port", value: Int32(port.rawValue))
+            default:
+                assertionFailure("only hostPort is supported")
+            }
+        }
+    }
+}
