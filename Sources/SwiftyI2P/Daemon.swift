@@ -6,13 +6,13 @@ import os
 public final class Daemon {
     public let version = "2.5.2"
 
-    private let isStarted = OSAllocatedUnfairLock(initialState: false)
+    public let isStarted = OSAllocatedUnfairLock(initialState: false)
 
     /// A path to i2pd data
     public let dataDir: URL
 
     /// An i2p configuration. Throws an error is daemon is not started.
-    let configuration: Configuration
+    public let configuration: Configuration
 
     public enum Failure: Error {
         case unknown(String)
@@ -61,7 +61,7 @@ public final class Daemon {
         }
     }
 
-    func checkAssets() throws {
+    private func checkAssets() throws {
         let fm = FileManager.default
         let versionFile = dataDir.appending(path: "assets.ready")
         let confFile = dataDir.appending(path: "i2pd.conf")
