@@ -3,7 +3,7 @@ import i2pbridge
 import Network
 import os
 
-public final class Daemon {
+public final class Daemon: Sendable {
     public let version = "2.5.2"
 
     public let isStarted = OSAllocatedUnfairLock(initialState: false)
@@ -11,7 +11,7 @@ public final class Daemon {
     /// A path to i2pd data
     public let dataDir: URL
 
-    /// An i2p configuration. Throws an error is daemon is not started.
+    /// An i2p configuration.
     public let configuration: Configuration
 
     public enum Failure: Error {
@@ -26,7 +26,7 @@ public final class Daemon {
         self.configuration = configuration
     }
 
-    /// Start i2p.
+    /// Start daemon.
     public func start() async throws {
         try await withCheckedThrowingContinuation { [weak self] continuation in
             DispatchQueue.global(qos: .background).async { [weak self] in
@@ -50,7 +50,7 @@ public final class Daemon {
         }
     }
 
-    /// Stop i2p
+    /// Stop daemon
     public func stop() async {
         guard isStarted.withLock({ $0 }) else { return }
         return await withCheckedContinuation { continuation in
