@@ -13,6 +13,9 @@ let package = Package(
             targets: ["SwiftyI2P"]
         ),
     ],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-testing", branch: "main"),
+    ],
     targets: [
         .target(
             name: "SwiftyI2P",
@@ -26,11 +29,16 @@ let package = Package(
         ),
         .target(
             name: "i2pbridge",
-            dependencies: ["i2pdcpp"]
+            dependencies: [
+                "i2pdcpp",
+            ]
         ),
         .testTarget(
             name: "SwiftyI2PTests",
-            dependencies: ["SwiftyI2P"]
+            dependencies: [
+                "SwiftyI2P",
+                .product(name: "Testing", package: "swift-testing"),
+            ]
         ),
         .binaryTarget(name: "i2pdcpp", path: "i2pdcpp/install/i2pdcpp.xcframework"),
     ],

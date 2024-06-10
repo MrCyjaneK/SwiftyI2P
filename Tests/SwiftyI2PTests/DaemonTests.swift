@@ -1,69 +1,75 @@
-@testable import SwiftyI2P
-import XCTest
+import Foundation
 import Network
+@testable import SwiftyI2P
+import Testing
 
-final class DaemonTests: XCTestCase {
-    var dataDir: URL!
-    var daemon: Daemon!
+struct DaemonTests {
+    private let dataDir = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appending(component: UUID().uuidString)
 
-    override func setUp() async throws {
-        try await super.setUp()
-        dataDir = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appending(component: UUID().uuidString)
-        daemon = Daemon(dataDir: dataDir, configuration: Configuration())
+    @Test(.timeLimit(.seconds(60)))
+    func start() async {
+        await with(daemon: Daemon(dataDir: dataDir, configuration: Configuration())) { daemon in
+            try await daemon.start()
+        }
     }
 
-    override func tearDown() async throws {
-        await daemon.stop()
-        try await super.tearDown()
-    }
-
-    func testStart() async throws {
-        let e = expectation(description: "test")
-        Task {
-            do {
-                try await daemon.start()
-            } catch {
-                XCTFail("unexpected error \(error)")
+    @Test(.timeLimit(.seconds(60)))
+    func socksProxy() async throws {
+        await with(daemon: Daemon(dataDir: dataDir, configuration: Configuration())) { daemon in
+            try await daemon.start()
+            switch daemon.configuration.socksProxy {
+            case let .hostPort(host: host, port: port):
+                #expect(host == "127.0.0.1")
+                #expect(port == 4447)
+            default:
+                Issue.record("untested")
             }
-            e.fulfill()
-        }
-
-        await fulfillment(of: [e], timeout: 120)
-    }
-
-    func testSocksProxy() async throws {
-        try await daemon.start()
-        switch daemon.configuration.socksProxy {
-        case let .hostPort(host: host, port: port):
-            XCTAssertEqual("127.0.0.1", host)
-            XCTAssertEqual(4447, port)
-        default:
-            XCTFail("untested")
         }
     }
 
-    func testSetSocksProxy() async throws {
+    @Test(.timeLimit(.seconds(60)))
+    func setSocksProxy() async throws {
         var configuration = Configuration()
         configuration.socksProxy = .hostPort(host: "127.0.0.1", port: 4449)
-        daemon = Daemon(dataDir: dataDir, configuration: configuration)
-        try await daemon.start()
-        XCTAssertEqual(daemon.configuration.socksProxy, .hostPort(host: "127.0.0.1", port: 4449))
+        await with(daemon: Daemon(dataDir: dataDir, configuration: configuration)) { daemon in
+            try await daemon.start()
+            #expect(daemon.configuration.socksProxy == .hostPort(host: "127.0.0.1", port: 4449))
+        }
     }
-    
-    func testSetPortAndConnect() async throws {
+
+    @Test(.timeLimit(.seconds(60)))
+    func setPortAndConnect() async throws {
         var configuration = Configuration()
-          configuration.socksProxy = .hostPort(host: "127.0.0.1", port: 4449)
-        daemon = Daemon(dataDir: dataDir, configuration: configuration)
-        try await daemon.start()
-        let config = URLSessionConfiguration.default
-        var proxy = ProxyConfiguration(socksv5Proxy: try XCTUnwrap(daemon.configuration.socksProxy))
-        proxy.matchDomains = ["i2p"]
-        config.proxyConfigurations = [proxy]
-        let session = URLSession(configuration: config)
-        let url = try XCTUnwrap(URL(string: "http://nytzrhrjjfsutowojvxi7hphesskpqqr65wpistz6wa7cpajhp7a.b32.i2p"))
-        try await Task.sleep(for: .seconds(60))
-        let (_, response) = try await session.data(for: URLRequest(url: url))
-        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        configuration.socksProxy = .hostPort(host: "127.0.0.1", port: 4449)
+        await with(daemon: Daemon(dataDir: dataDir, configuration: configuration)) { daemon in
+            try await daemon.start()
+            let config = URLSessionConfiguration.default
+            var proxy = try ProxyConfiguration(socksv5Proxy: #require(daemon.configuration.socksProxy))
+            proxy.matchDomains = ["i2p"]
+            config.proxyConfigurations = [proxy]
+            let session = URLSession(configuration: config)
+            let url = try #require(URL(string: "http://nytzrhrjjfsutowojvxi7hphesskpqqr65wpistz6wa7cpajhp7a.b32.i2p"))
+            try await Task.sleep(for: .seconds(60))
+            let (_, response) = try await session.data(for: URLRequest(url: url))
+            #expect((response as? HTTPURLResponse)?.statusCode == 200)
+        }
+    }
+
+    private func with(
+        daemon: Daemon,
+        fileID: String = #fileID,
+        filePath: String = #filePath,
+        line: Int = #line,
+        column: Int = #column,
+        closure: (Daemon) async throws -> Void
+    ) async {
+        do {
+            try await closure(daemon)
+        } catch {
+            Issue.record(error, fileID: fileID, filePath: filePath, line: line, column: column)
+        }
+
+        await daemon.stop()
     }
 }

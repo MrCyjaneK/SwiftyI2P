@@ -40,13 +40,17 @@ public struct Configuration: Sendable {
         var currentSection = ""
         var lines = [String]()
         let sortedKeys = content.keys.sorted { a, b in
-            if a.firstIndex(of: ".") != nil {
+            let aS = a.firstIndex(of: ".") != nil
+            let bS = b.firstIndex(of: ".") != nil
+            if aS, bS {
+                return a < b
+            } else if aS {
                 return false
-            }
-            if b.firstIndex(of: ".") != nil {
+            } else if bS {
                 return true
+            } else {
+                return a < b
             }
-            return a < b
         }
         for compoundKey in sortedKeys {
             let keySection = compoundKey.components(separatedBy: ".")
