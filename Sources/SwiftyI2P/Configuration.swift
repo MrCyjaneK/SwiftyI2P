@@ -10,10 +10,6 @@ import i2pbridge
 import Network
 
 public struct Configuration: Sendable {
-    enum Failure: Error {
-        case unsupported(type: String)
-    }
-
     private var content = [String: Sendable]()
 
     public init() {}
@@ -28,21 +24,16 @@ public struct Configuration: Sendable {
 
     /// Get a value by the key.
     /// - Parameter key: A key. Section should be delemited with '.', e.g, httpproxy.enable.
-    /// - Returns: a corresponging value. Value is undefined if daemon is not started. Type should correspond to i2pd internal type.
-    public func get<T>(key: String) throws -> T {
-        switch T.self {
-        case is UInt16.Type:
-            if let res = i2pd_get_uint16_option(key) as? T {
-                return res
-            }
-        case is String.Type:
-            if let res = String(cString: i2pd_get_string_option(key)) as? T {
-                return res
-            }
-        default:
-            break
-        }
-        throw Failure.unsupported(type: String(describing: T.self))
+    /// - Returns: a corresponging value. Value is undefined if daemon is not started.
+    public func get(key: String) throws -> UInt16 {
+        i2pd_get_uint16_option(key)
+    }
+
+    /// Get a value by the key.
+    /// - Parameter key: A key. Section should be delemited with '.', e.g, httpproxy.enable.
+    /// - Returns: a corresponging value. Value is undefined if daemon is not started.
+    public func get(key: String) throws -> String {
+        String(cString: i2pd_get_string_option(key))
     }
 
     var asString: String {
