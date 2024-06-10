@@ -28,8 +28,8 @@ public final class Daemon {
 
     /// Start i2p.
     public func start() async throws {
-        try await withCheckedThrowingContinuation { [dataDir, isStarted] continuation in
-            DispatchQueue.global().async { [weak self] in
+        try await withCheckedThrowingContinuation { [weak self] continuation in
+            DispatchQueue.global(qos: .background).async { [weak self] in
                 guard let self else { return }
                 do {
                     try checkAssets()
@@ -54,7 +54,7 @@ public final class Daemon {
     public func stop() async {
         guard isStarted.withLock({ $0 }) else { return }
         return await withCheckedContinuation { continuation in
-            DispatchQueue.global().async {
+            DispatchQueue.global(qos: .background).async {
                 i2pd_stop()
                 continuation.resume()
             }
