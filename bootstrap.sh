@@ -49,7 +49,7 @@ SOURCE_DELETE=TRUE
 BASE_DIR=$(pwd)
 
 # versions to download 
-BOOST_VER=1.72.0
+BOOST_VER=1.86.0
 OPENSSL_VER=1.1.1d
 I2PD_VER=2.29.0
 
@@ -91,8 +91,8 @@ OPENSSL_SHA=14cb464efe7ac6b54799b34456bd69558a749a4931ecfd9cf9f71d7881cac7bc # 1
 I2PD_SHA=dfa1c212c217eb2eae40f3f8151d35164c52df630e658dcb261cc9532623377dee376d1c493e8b8bdcae3245ae389e06adf5ef551951d4e139f1626b8432c15b
 
 # change based on version
-if [ "${BOOST_VER}" = "1.72.0" ]; then
-	BOOST_SHA=59c9b274bc451cf91a9ba1dd2c7fdcaf5d60b1b3aa83f2c9fa143417cc660722 # 1.72.0
+if [ "${BOOST_VER}" = "1.86.0" ]; then
+	BOOST_SHA=1bed88e40401b2cb7a1f76d4bab499e352fa4d0c5f31c0dbae64e24d34d7513b # 1.72.0
 fi
 
 if [ "${OPENSSL_VER}" = "1.0.2u" ]; then

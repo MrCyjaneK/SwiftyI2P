@@ -4,3 +4,15 @@ lib/lib
 lib/dist/*.bz2
 lib/dist/*.gz
 .DS_Store
+i2pd/build
+i2pd/i2pd-*
+i2pd/*.tar.gz
+include/boost
+include/license
+include/openssl
+include/opensslconf-template.h
+workspace/build
+workspace/src
+workspace/dist
+workspace/*.tar.bz2
+lib
